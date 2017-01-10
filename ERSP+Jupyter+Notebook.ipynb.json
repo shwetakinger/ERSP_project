@@ -1,0 +1,347 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import biom\n",
+    "import sklearn\n",
+    "import pandas as pd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "m = pd.read_csv(\"/Users/shwetakinger/Downloads/Actual_metadata.txt\", sep=\"\\t\", index_col=0)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Index(['BarcodeSequence', 'LinkerPrimerSequence', 'center_name',\n",
+       "       'experiment_design_description', 'extraction_robot',\n",
+       "       'extractionkit_lot', 'instrument_model',\n",
+       "       'library_construction_protocol', 'linker', 'mastermix_lot',\n",
+       "       ...\n",
+       "       'site_nr', 'testperformed', 'title', 'tracking_time_min',\n",
+       "       'velocity_change_1_4', 'velocity_change_4_5', 'velocity_cm_s', 'weight',\n",
+       "       'weight_1', 'Description'],\n",
+       "      dtype='object', length=107)"
+      ]
+     },
+     "execution_count": 47,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "m.columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 60,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['10480.900101', '10480.900401', '10480.900601', '10480.900701',\n",
+      "       '10480.900801', '10480.900901', '10480.901001', '10480.901201',\n",
+      "       '10480.901301', '10480.901401',\n",
+      "       ...\n",
+      "       '10480.930501', '10480.930701', '10480.930901', '10480.931001',\n",
+      "       '10480.931201', '10480.931301', '10480.931401', '10480.931601',\n",
+      "       '10480.931801', '10480.932001'],\n",
+      "      dtype='object', name='#SampleID', length=205)\n"
+     ]
+    }
+   ],
+   "source": [
+    "i = m[m.body_site==\"UBERON:Colon\"][[\"body_site\", \"exposure\"]].index\n",
+    "print(i)\n",
+    "i_2 = m[m.body_site==\"UBERON:Colon\"][[\"body_site\", \"exposure\"]]\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 61,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "b= biom.load_table(\"/Users/shwetakinger/Downloads/final.only-16s.biom\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 50,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "p = pd.DataFrame(b.matrix_data.T.todense().astype(int), index=b.ids(axis=\"sample\"), columns=b.ids(axis=\"observation\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "c = p.loc[i,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 66,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "#Attempt at splitting data into test and training data (50 - 50)\n",
+    "from sklearn.cross_validation import train_test_split\n",
+    "X_train, X_test, y_train, y_test = train_test_split(c.fillna(0).as_matrix(), i_2.exposure, test_size=0.5)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 64,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.ensemble import RandomForestClassifier"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 72,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "clf = RandomForestClassifier(n_estimators=10)\n",
+    "classifier = RandomForestClassifier(n_estimators = 10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 73,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.60194174757281549"
+      ]
+     },
+     "execution_count": 73,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#overfitting\n",
+    "clf.fit(c.fillna(0).as_matrix(), i_2.exposure)\n",
+    "#50-50 split\n",
+    "classifier.fit(X_train, y_train)\n",
+    "classifier.score(X_test, y_test)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[[  1.53920000e+04   0.00000000e+00   1.34950000e+04 ...,   2.34500000e+03\n",
+      "    7.01000000e+02   6.00000000e+00]\n",
+      " [  1.21700000e+03   1.50300000e+03   6.09000000e+02 ...,   7.28300000e+03\n",
+      "    9.22300000e+03   0.00000000e+00]\n",
+      " [  1.21600000e+03   2.03300000e+03   1.13900000e+03 ...,   8.39000000e+02\n",
+      "    2.91800000e+03   0.00000000e+00]\n",
+      " ..., \n",
+      " [  0.00000000e+00   0.00000000e+00   0.00000000e+00 ...,   0.00000000e+00\n",
+      "    0.00000000e+00   0.00000000e+00]\n",
+      " [  0.00000000e+00   0.00000000e+00   0.00000000e+00 ...,   0.00000000e+00\n",
+      "    0.00000000e+00   0.00000000e+00]\n",
+      " [  0.00000000e+00   0.00000000e+00   0.00000000e+00 ...,   0.00000000e+00\n",
+      "    0.00000000e+00   0.00000000e+00]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(c.fillna(0).T.as_matrix())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 75,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "#SampleID\n",
+      "10480.900101       Control\n",
+      "10480.900102       Control\n",
+      "10480.900103       Control\n",
+      "10480.900203       Control\n",
+      "10480.900401       Control\n",
+      "10480.900403       Control\n",
+      "10480.900503       Control\n",
+      "10480.900601       Control\n",
+      "10480.900602       Control\n",
+      "10480.900603       Control\n",
+      "10480.900701       Control\n",
+      "10480.900702       Control\n",
+      "10480.900703       Control\n",
+      "10480.900801       Control\n",
+      "10480.900802       Control\n",
+      "10480.900803       Control\n",
+      "10480.900901       Control\n",
+      "10480.900903       Control\n",
+      "10480.901001       Control\n",
+      "10480.901002       Control\n",
+      "10480.901003       Control\n",
+      "10480.901201       Control\n",
+      "10480.901202       Control\n",
+      "10480.901203       Control\n",
+      "10480.901301       Control\n",
+      "10480.901303       Control\n",
+      "10480.901401       Control\n",
+      "10480.901402       Control\n",
+      "10480.901403       Control\n",
+      "10480.901501       Control\n",
+      "                    ...   \n",
+      "10480.BLANK7.6C        NaN\n",
+      "10480.BLANK7.6D        NaN\n",
+      "10480.BLANK7.6E        NaN\n",
+      "10480.BLANK7.6F        NaN\n",
+      "10480.BLANK7.6G        NaN\n",
+      "10480.BLANK7.6H        NaN\n",
+      "10480.BLANK7.7A        NaN\n",
+      "10480.BLANK7.7B        NaN\n",
+      "10480.BLANK7.7C        NaN\n",
+      "10480.BLANK7.7D        NaN\n",
+      "10480.BLANK7.7E        NaN\n",
+      "10480.BLANK7.7F        NaN\n",
+      "10480.BLANK7.7G        NaN\n",
+      "10480.BLANK7.7H        NaN\n",
+      "10480.BLANK7.8A        NaN\n",
+      "10480.BLANK7.8B        NaN\n",
+      "10480.BLANK7.8C        NaN\n",
+      "10480.BLANK7.8D        NaN\n",
+      "10480.BLANK7.8E        NaN\n",
+      "10480.BLANK7.8F        NaN\n",
+      "10480.BLANK7.8G        NaN\n",
+      "10480.BLANK7.8H        NaN\n",
+      "10480.BLANK7.9A        NaN\n",
+      "10480.BLANK7.9B        NaN\n",
+      "10480.BLANK7.9C        NaN\n",
+      "10480.BLANK7.9D        NaN\n",
+      "10480.BLANK7.9E        NaN\n",
+      "10480.BLANK7.9F        NaN\n",
+      "10480.BLANK7.9G        NaN\n",
+      "10480.BLANK7.9H        NaN\n",
+      "Name: exposure, dtype: object\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(m.exposure)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 76,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.94146341463414629"
+      ]
+     },
+     "execution_count": 76,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf.score(c.fillna(0).as_matrix(), i_2.exposure)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "anaconda-cloud": {},
+  "kernelspec": {
+   "display_name": "Python [conda root]",
+   "language": "python",
+   "name": "conda-root-py"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.5.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
